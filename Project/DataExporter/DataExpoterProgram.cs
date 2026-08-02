@@ -1,10 +1,11 @@
 ﻿namespace DataExporter
 {
-    internal class Program
+    internal class DataExpoterProgram
     {
         static void Main(string[] args)
         {
             // DataExporter
+            
         }
     }
 }
