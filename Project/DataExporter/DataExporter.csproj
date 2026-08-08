@@ -9,13 +9,21 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
-    <PackageReference Include="Google.Protobuf.Tools" Version="3.35.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      SchemaGenerator가 Output\CSharp에 생성한 모든 C# 파일을 DataExporter의 컴파일 소스로 포함합니다.
+      *.cs는 CSharp 폴더 바로 아래의 파일만 포함하며, 하위 폴더까지 포함하지 않습니다.
+      문서: https://learn.microsoft.com/en-us/visualstudio/msbuild/common-msbuild-project-items?view=visualstudio#compile
+    -->
+    <Compile Include="..\..\Output\CSharp\*.cs" />
   </ItemGroup>
 
 </Project>

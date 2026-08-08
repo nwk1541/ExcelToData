@@ -1,0 +1,13 @@
+﻿syntax = "proto3";
+
+package data.local;
+option csharp_namespace = "Data.Local";
+
+message CharTable
+{
+    int32 id = 1;
+    int32 type = 2;
+    int32 statId = 3;
+    repeated int32 skillIds = 4;
+    string name = 5;
+}

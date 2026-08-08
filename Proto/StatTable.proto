@@ -1,0 +1,12 @@
+﻿syntax = "proto3";
+
+package data.local;
+option csharp_namespace = "Data.Local";
+
+message StatTable
+{
+    int32 id = 1;
+    int32 hp = 2;
+    int32 power = 3;
+    int32 speed = 4;
+}

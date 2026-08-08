@@ -8,7 +8,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      protoc은 SchemaGenerator에서만 사용하는 개발 도구입니다.
+      PrivateAssets="all"은 이 패키지가 다른 프로젝트 참조 또는 NuGet 패키지 의존성으로 전파되지 않도록 합니다.
+      문서: https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#controlling-dependency-assets
+    -->
+    <PackageReference Include="Google.Protobuf.Tools" Version="3.35.1" PrivateAssets="all" />
     <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      NuGet이 tools 폴더를 기준으로 자동 생성한 $(PkgGoogle_Protobuf_Tools) 경로에서 protoc.exe를 가져옵니다.
+      Link는 외부 파일의 논리 경로를 지정하고, PreserveNewest는 원본이 더 새로울 때만 출력 폴더로 복사합니다.
+      문서: https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#generatepathproperty
+      문서: https://learn.microsoft.com/en-us/visualstudio/msbuild/common-msbuild-project-items?view=visualstudio#none
+    -->
+    <None Include="$(PkgGoogle_Protobuf_Tools)\tools\windows_x64\protoc.exe" Link="protoc.exe" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
