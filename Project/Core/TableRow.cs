@@ -1,10 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace Core
 {
-    internal class TableRow
+    public sealed class TableRow
     {
+        public TableRow(int excelRowIndex, IReadOnlyList<string> values)
+        {
+            ExcelRowIndex = excelRowIndex;
+            Values = values;
+        }
+
+        public int ExcelRowIndex { get; }
+
+        public IReadOnlyList<string> Values { get; }
     }
 }

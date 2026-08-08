@@ -1,19 +1,21 @@
-﻿namespace SchemaGenerator
+﻿using System.IO;
+using Core;
+
+namespace SchemaGenerator
 {
     internal class SchemaGeneratorProgram
     {
         static void Main(string[] args)
         {
-            string rootDirectoryPath = Core.PathUtil.GetRootDirectoryPath();
-            string excelDirectoryPath = Core.PathUtil.GetExcelDirectoryPath();
-            string protoDirectoryPath = Core.PathUtil.GetProtoDirectoryPath();
-            string outputDirectoryPath = Core.PathUtil.GetOutputDirectoryPath();
+            string excelFilePath = Path.Combine(PathUtil.GetExcelDirectoryPath(), "캐릭터_정보.xlsx");
+            WorkbookData workbookData = new ExcelReader().Read(excelFilePath);
 
-            Console.WriteLine("경로 조회 성공");
-            Console.WriteLine($"작업 루트: {rootDirectoryPath}");
-            Console.WriteLine($"Excel 경로: {excelDirectoryPath}");
-            Console.WriteLine($"Proto 경로: {protoDirectoryPath}");
-            Console.WriteLine($"Output 경로: {outputDirectoryPath}");
+            Console.WriteLine($"규약 검증 성공: {Path.GetFileName(excelFilePath)}");
+
+            foreach (TableData table in workbookData.Tables)
+            {
+                Console.WriteLine($"- {table.Schema.TableName}: {table.Schema.Columns.Count}개 컬럼, {table.Rows.Count}개 데이터 행");
+            }
         }
     }
 }
