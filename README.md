@@ -11,6 +11,26 @@ Excel Workbook
   → SQLite 생성
 ~~~
 
+## 산출물
+
+~~~text
+Proto/
+  CharTable.proto
+  StatTable.proto
+
+Output/
+  CSharp/
+    CharTable.cs
+    StatTable.cs
+  Database/
+    LocalData.db
+~~~
+
+- 워크시트 하나는 .proto 파일 하나와 C# 클래스 하나에 대응합니다.
+- 모든 생성 C# 클래스는 Data.Local namespace에 포함됩니다.
+- Proto는 스키마 계약 파일이며, Output/CSharp와 Output/Database는 외부 도구에 전달하는 생성 산출물입니다.
+- LocalData.db는 이후 DataExporter 구현 단계에서 생성합니다.
+
 ## 핵심 규약
 
 | 항목 | 규칙 |
