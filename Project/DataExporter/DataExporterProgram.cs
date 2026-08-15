@@ -8,19 +8,24 @@ namespace DataExporter
     internal class DataExporterProgram
     {
         /// <summary>
-        /// Excel 데이터를 읽어 Protobuf payload를 포함한 SQLite 데이터베이스를 생성하고 검증합니다.
+        /// Excel 데이터를 읽어 런타임 및 디버그 SQLite 데이터베이스를 생성하고 검증합니다.
         /// </summary>
         static void Main(string[] args)
         {
             List<TableData> tables = ReadTables();
             ProtobufRowSerializer protobufRowSerializer = new();
             SqliteDataExporter sqliteDataExporter = new(protobufRowSerializer);
-            string databaseFilePath = sqliteDataExporter.Export(tables);
+            DebugSqliteDataExporter debugSqliteDataExporter = new();
+            string runtimeDatabaseFilePath = sqliteDataExporter.Export(tables);
+            string debugDatabaseFilePath = debugSqliteDataExporter.Export(tables);
             DataExportVerifier dataExportVerifier = new(protobufRowSerializer);
+            DebugDataExportVerifier debugDataExportVerifier = new();
 
-            dataExportVerifier.Verify(databaseFilePath, tables);
+            dataExportVerifier.Verify(runtimeDatabaseFilePath, tables);
+            debugDataExportVerifier.Verify(debugDatabaseFilePath, tables);
             Console.WriteLine("데이터 변환 성공");
-            Console.WriteLine($"- 데이터베이스: {databaseFilePath}");
+            Console.WriteLine($"- 런타임 데이터베이스: {runtimeDatabaseFilePath}");
+            Console.WriteLine($"- 디버그 데이터베이스: {debugDatabaseFilePath}");
 
             foreach (TableData table in tables)
             {

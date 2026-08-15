@@ -42,7 +42,7 @@ namespace DataExporter
             try
             {
                 CreateDatabase(temporaryDatabaseFilePath, tables);
-                File.Move(temporaryDatabaseFilePath, databaseFilePath, true);
+                DatabaseFileUtil.ReplaceDatabaseFile(temporaryDatabaseFilePath, databaseFilePath);
             }
             finally
             {
@@ -58,7 +58,7 @@ namespace DataExporter
         internal static object GetSqliteValue(ColumnSchema column, string value)
         {
             // 런타임 DB에서는 repeated<T>를 payload에만 저장합니다.
-            // 디버그 DB 구현 시에는 JSON 형식의 TEXT 컬럼으로 저장합니다.
+            // 디버그 DB에서는 DebugSqliteDataExporter가 JSON 형식의 TEXT 컬럼으로 저장합니다.
             if (column.IsRepeated)
             {
                 throw new InvalidDataException($"repeated 타입은 SQLite 독립 컬럼으로 저장할 수 없습니다. 필드: {column.Name}");
@@ -226,7 +226,7 @@ namespace DataExporter
             return $"INSERT INTO {QuoteIdentifier(tableName)} ({string.Join(", ", columnNames)}) VALUES ({string.Join(", ", parameterNames)});";
         }
 
-        private static string GetSqliteDataTypeName(ColumnDataType dataType)
+        internal static string GetSqliteDataTypeName(ColumnDataType dataType)
         {
             return dataType switch
             {

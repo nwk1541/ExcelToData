@@ -10,6 +10,7 @@ namespace Core
         public const string OUTPUT_DIRECTORY_NAME = "Output";
         public const string CSHARP_OUTPUT_DIRECTORY_NAME = "CSharp";
         public const string DATABASE_OUTPUT_DIRECTORY_NAME = "Database";
+        public const string DEBUG_DATABASE_DIRECTORY_NAME = "Debug";
 
         private const string PROJECT_DIRECTORY_NAME = "Project";
         private const string SOLUTION_FILE_NAME = "Project.slnx";
@@ -62,6 +63,11 @@ namespace Core
         public static string GetDatabaseOutputDirectoryPath()
         {
             return Path.Combine(GetOutputDirectoryPath(), DATABASE_OUTPUT_DIRECTORY_NAME);
+        }
+
+        public static string GetDebugDatabaseOutputDirectoryPath()
+        {
+            return Path.Combine(GetDatabaseOutputDirectoryPath(), DEBUG_DATABASE_DIRECTORY_NAME);
         }
     }
 }
