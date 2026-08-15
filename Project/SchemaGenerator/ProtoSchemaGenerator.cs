@@ -18,11 +18,28 @@ namespace SchemaGenerator
             string protoDirectoryPath = PathUtil.GetProtoDirectoryPath();
             string csharpOutputDirectoryPath = PathUtil.GetCSharpOutputDirectoryPath();
             string databaseOutputDirectoryPath = PathUtil.GetDatabaseOutputDirectoryPath();
+            string temporaryProtoDirectoryPath = GetTemporaryDirectoryPath(protoDirectoryPath);
+            string temporaryCsharpOutputDirectoryPath = GetTemporaryDirectoryPath(csharpOutputDirectoryPath);
 
-            Directory.CreateDirectory(protoDirectoryPath);
-            Directory.CreateDirectory(csharpOutputDirectoryPath);
             Directory.CreateDirectory(databaseOutputDirectoryPath);
 
+            try
+            {
+                Directory.CreateDirectory(temporaryProtoDirectoryPath);
+                Directory.CreateDirectory(temporaryCsharpOutputDirectoryPath);
+                GenerateFiles(tables, temporaryProtoDirectoryPath, temporaryCsharpOutputDirectoryPath);
+                ReplaceDirectory(temporaryProtoDirectoryPath, protoDirectoryPath);
+                ReplaceDirectory(temporaryCsharpOutputDirectoryPath, csharpOutputDirectoryPath);
+            }
+            finally
+            {
+                DeleteDirectoryIfExists(temporaryProtoDirectoryPath);
+                DeleteDirectoryIfExists(temporaryCsharpOutputDirectoryPath);
+            }
+        }
+
+        private static void GenerateFiles(IReadOnlyList<TableData> tables, string protoDirectoryPath, string csharpOutputDirectoryPath)
+        {
             foreach (TableData table in tables)
             {
                 string tableName = table.Schema.TableName;
@@ -101,6 +118,61 @@ namespace SchemaGenerator
         {
             string source = File.ReadAllText(filePath);
             File.WriteAllText(filePath, source, new UTF8Encoding(true));
+        }
+
+        private static string GetTemporaryDirectoryPath(string directoryPath)
+        {
+            string? parentDirectoryPath = Path.GetDirectoryName(directoryPath);
+
+            if (string.IsNullOrEmpty(parentDirectoryPath))
+            {
+                throw new InvalidOperationException($"임시 디렉터리의 상위 경로를 찾을 수 없습니다. 경로: {directoryPath}");
+            }
+
+            string directoryName = Path.GetFileName(directoryPath);
+
+            return Path.Combine(parentDirectoryPath, $"{directoryName}.{Guid.NewGuid():N}.tmp");
+        }
+
+        private static void ReplaceDirectory(string temporaryDirectoryPath, string directoryPath)
+        {
+            string backupDirectoryPath = GetTemporaryDirectoryPath(directoryPath);
+            bool replacementCompleted = false;
+
+            try
+            {
+                if (Directory.Exists(directoryPath))
+                {
+                    Directory.Move(directoryPath, backupDirectoryPath);
+                }
+
+                Directory.Move(temporaryDirectoryPath, directoryPath);
+                replacementCompleted = true;
+            }
+            catch
+            {
+                if (Directory.Exists(backupDirectoryPath) && !Directory.Exists(directoryPath))
+                {
+                    Directory.Move(backupDirectoryPath, directoryPath);
+                }
+
+                throw;
+            }
+            finally
+            {
+                if (replacementCompleted && Directory.Exists(backupDirectoryPath))
+                {
+                    Directory.Delete(backupDirectoryPath, true);
+                }
+            }
+        }
+
+        private static void DeleteDirectoryIfExists(string directoryPath)
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, true);
+            }
         }
 
         private static string GetProtoDataTypeName(ColumnDataType dataType)

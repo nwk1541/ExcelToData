@@ -32,6 +32,7 @@ Output/
 - 워크시트 하나는 .proto 파일 하나와 C# 클래스 하나에 대응합니다.
 - 모든 생성 C# 클래스는 Data.Local namespace에 포함됩니다.
 - Proto는 스키마 계약 파일이며, Output/CSharp와 Output/Database는 외부 도구에 전달하는 생성 산출물입니다.
+- Proto와 Output/CSharp는 SchemaGenerator가 전부 생성·교체하는 전용 폴더입니다. 수동 파일을 두지 않으며, 시트 삭제나 이름 변경으로 더 이상 생성되지 않는 파일도 제거합니다.
 - `Output/Database/LocalData.db`는 런타임에서 사용하는 데이터베이스입니다.
 - `Output/Database/Debug/LocalData.db`는 사람이 직접 데이터를 확인하는 디버그 데이터베이스이며, 런타임에서는 사용하지 않습니다.
 - DataExporter는 변환 후 런타임 DB의 테이블 행 수, pk 조회, op 값·인덱스, `payload` 역직렬화와 디버그 DB의 모든 컬럼 값을 검증합니다.
