@@ -1,6 +1,6 @@
 ﻿# ExcelToData
 
-Excel로 작성한 게임 기획 데이터를 검증한 뒤, Protocol Buffers Payload를 포함한 SQLite 데이터베이스로 변환하는 테스트 프로젝트입니다.
+Excel로 작성한 게임 기획 데이터를 검증한 뒤, Protocol Buffers `payload`를 포함한 SQLite 데이터베이스로 변환하는 테스트 프로젝트입니다.
 
 ## 변환 흐름
 
@@ -29,7 +29,8 @@ Output/
 - 워크시트 하나는 .proto 파일 하나와 C# 클래스 하나에 대응합니다.
 - 모든 생성 C# 클래스는 Data.Local namespace에 포함됩니다.
 - Proto는 스키마 계약 파일이며, Output/CSharp와 Output/Database는 외부 도구에 전달하는 생성 산출물입니다.
-- LocalData.db는 이후 DataExporter 구현 단계에서 생성합니다.
+- LocalData.db는 DataExporter 실행 시 생성합니다.
+- DataExporter는 변환 후 테이블 행 수, pk 조회, op 값·인덱스, `payload` 역직렬화를 검증합니다.
 
 ## 핵심 규약
 
@@ -39,7 +40,7 @@ Output/
 | #Range | 워크시트마다 정확히 하나를 선언합니다. 대상 범위 밖의 셀에 두며, 헤더·타입·데이터 행을 포함하는 연속된 직사각형 범위를 지정합니다. |
 | #Type | 워크시트마다 정확히 하나를 선언합니다. 타입 행의 첫 셀을 지정하며, 해당 행은 헤더 바로 다음 행이고 #Range와 같은 열 폭을 가져야 합니다. |
 | 헤더 | 필드명 또는 필드명:속성 형식입니다. 필드명은 비어 있거나 중복될 수 없으며, SQL 컬럼 이름으로 그대로 사용합니다. SQL 생성 시에는 식별자를 인용 처리합니다. |
-| 데이터 | 타입 행 바로 다음 행부터 시작합니다. 각 데이터 행 전체는 Protocol Buffers로 직렬화되어 Payload BLOB에 저장됩니다. |
+| 데이터 | 타입 행 바로 다음 행부터 시작합니다. 각 데이터 행 전체는 Protocol Buffers로 직렬화되어 `payload` BLOB에 저장됩니다. |
 | 수식 | 수식을 실행하지 않고 Excel 파일에 저장된 계산값만 읽습니다. 계산값이 없으면 변환 오류입니다. |
 
 ~~~text
@@ -61,9 +62,9 @@ C6: 3         D6: 2          E6: 3          F6: 1,2,3             G6: 몬스터1
 
 | 표기 | 규칙 |
 | --- | --- |
-| 필드명 | Payload에만 저장합니다. |
-| 필드명:pk | 모든 워크시트에 정확히 하나가 필수입니다. int32, int64, string 같은 단일 값 타입만 허용하며, 값은 비어 있거나 중복될 수 없습니다. SQLite PK 컬럼과 Payload에 저장됩니다. |
-| 필드명:op | SQLite 독립 NOT NULL 컬럼과 단일 컬럼 인덱스를 생성합니다. 값은 Payload에도 함께 저장됩니다. repeated\<T\>와 중첩 메시지 타입에는 지정할 수 없습니다. |
+| 필드명 | `payload`에만 저장합니다. |
+| 필드명:pk | 모든 워크시트에 정확히 하나가 필수입니다. int32, int64, string 같은 단일 값 타입만 허용하며, 값은 비어 있거나 중복될 수 없습니다. SQLite PK 컬럼과 `payload`에 저장됩니다. |
+| 필드명:op | SQLite 독립 NOT NULL 컬럼과 단일 컬럼 인덱스를 생성합니다. 값은 `payload`에도 함께 저장됩니다. repeated\<T\>와 중첩 메시지 타입에는 지정할 수 없습니다. |
 
 ## 자료형
 
@@ -75,7 +76,7 @@ C6: 3         D6: 2          E6: 3          F6: 1,2,3             G6: 몬스터1
 | float, double | REAL |
 | bool | INTEGER (0 또는 1) |
 | string | TEXT |
-| repeated\<T\> | 지원하지 않음 (Payload 전용) |
+| repeated\<T\> | 지원하지 않음 (`payload` 전용) |
 
 - bool 값은 0 또는 1만 허용합니다.
 - 목록 셀은 쉼표(,)로 값을 구분합니다.
@@ -98,4 +99,4 @@ C6: 3         D6: 2          E6: 3          F6: 1,2,3             G6: 몬스터1
 
 필드 번호는 #Range의 헤더 열을 왼쪽에서 오른쪽으로 읽어 1부터 순서대로 자동 생성합니다. pk와 op 속성은 번호 순서에 영향을 주지 않습니다.
 
-열을 삽입·삭제·이동하면 이후 필드 번호가 바뀌므로 기존 Payload BLOB과 호환되지 않습니다. Excel 구조를 변경한 뒤에는 SQLite 데이터베이스와 모든 Payload를 다시 생성합니다.
+열을 삽입·삭제·이동하면 이후 필드 번호가 바뀌므로 기존 `payload` BLOB과 호환되지 않습니다. Excel 구조를 변경한 뒤에는 SQLite 데이터베이스와 모든 `payload`를 다시 생성합니다.

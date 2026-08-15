@@ -3,24 +3,28 @@ using System.Collections.Generic;
 using System.IO;
 using Core;
 
-namespace SchemaGenerator
+namespace DataExporter
 {
-    internal class SchemaGeneratorProgram
+    internal class DataExporterProgram
     {
         /// <summary>
-        /// Excel 시트의 스키마를 읽어 테이블별 Protobuf 스키마와 C# 클래스를 생성합니다.
+        /// Excel 데이터를 읽어 Protobuf payload를 포함한 SQLite 데이터베이스를 생성하고 검증합니다.
         /// </summary>
         static void Main(string[] args)
         {
             List<TableData> tables = ReadTables();
-            ProtoSchemaGenerator protoSchemaGenerator = new();
+            ProtobufRowSerializer protobufRowSerializer = new();
+            SqliteDataExporter sqliteDataExporter = new(protobufRowSerializer);
+            string databaseFilePath = sqliteDataExporter.Export(tables);
+            DataExportVerifier dataExportVerifier = new(protobufRowSerializer);
 
-            protoSchemaGenerator.Generate(tables);
-            Console.WriteLine("Schema 생성 성공");
+            dataExportVerifier.Verify(databaseFilePath, tables);
+            Console.WriteLine("데이터 변환 성공");
+            Console.WriteLine($"- 데이터베이스: {databaseFilePath}");
 
             foreach (TableData table in tables)
             {
-                Console.WriteLine($"- {table.Schema.TableName}: {table.Schema.Columns.Count}개 컬럼, {table.Rows.Count}개 데이터 행");
+                Console.WriteLine($"- {table.Schema.TableName}: {table.Rows.Count}개 데이터 행");
             }
         }
 
