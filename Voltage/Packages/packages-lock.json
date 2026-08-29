@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.nwk15.localdata": {
-      "version": "file:com.nwk15.localdata",
+    "com.noname.voltage": {
+      "version": "file:com.noname.voltage",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}

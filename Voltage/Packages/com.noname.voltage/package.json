@@ -1,0 +1,10 @@
+﻿{
+  "name": "com.noname.voltage",
+  "version": "0.0.1",
+  "displayName": "LocalDataManager",
+  "description": "Reads project-provided SQLite data and Protocol Buffers payloads.",
+  "unity": "6000.0",
+  "author": {
+    "name": "wknam"
+  }
+}
