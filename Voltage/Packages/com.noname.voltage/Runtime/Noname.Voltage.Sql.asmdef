@@ -1,6 +1,6 @@
 ﻿{
-  "name": "Noname.Voltage.Data",
-  "rootNamespace": "Noname.Voltage.Data",
+  "name": "Noname.Voltage.Sql",
+  "rootNamespace": "Noname.Voltage.Sql",
   "references": [],
   "includePlatforms": [],
   "excludePlatforms": [],

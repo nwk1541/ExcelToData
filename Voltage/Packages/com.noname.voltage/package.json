@@ -1,9 +1,12 @@
 ﻿{
   "name": "com.noname.voltage",
   "version": "0.0.1",
-  "displayName": "LocalDataManager",
-  "description": "Reads project-provided SQLite data and Protocol Buffers payloads.",
+  "displayName": "SQL Manager",
+  "description": "Package foundation for initialized SQLite table access, custom query helpers, and payload parsing.",
   "unity": "6000.0",
+  "dependencies": {
+    "org.nuget.google.protobuf": "3.35.1"
+  },
   "author": {
     "name": "wknam"
   }
