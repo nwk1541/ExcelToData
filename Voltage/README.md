@@ -2,9 +2,47 @@
 
 ## 문서 목적
 
-이 문서는 ExcelToData가 생성한 SQLite 데이터베이스와 Protocol Buffers C# 클래스를 Unity 프로젝트에서 사용하기 위한 `SQL Manager` 패키지의 책임, 예정 API와 구현 순서를 정리합니다.
+이 문서는 ExcelToData가 생성한 SQLite 데이터베이스와 Protocol Buffers C# 클래스를 Unity 프로젝트에서 사용하기 위한 `SQL Manager` 패키지의 채택 기술, 책임, 예정 API와 검증 순서를 정리합니다.
 
-Excel 데이터 작성 및 변환 규약은 상위 [README](../README.md)를 따릅니다. 이 문서는 Unity 런타임 연동만 다루며 현재 `SqlManager` 본문은 구현하지 않습니다.
+Excel 데이터 작성 및 변환 규약은 상위 [README](../README.md)를 따릅니다. 패키지 개요는 [패키지 README](Packages/com.noname.voltage/README.md)를 참고합니다.
+
+Windows용 SQLite DLL 구성과 SampleScene의 에디터 Play 검증을 완료했습니다. Windows x64 Player 빌드·실행 검증은 아직 수행하지 않았으며, 이후 `SqlManager` 본문을 구현합니다.
+
+## SampleScene 실행
+
+1. Windows의 Unity 6000.5.2f1에서 프로젝트를 열고 패키지 해석과 컴파일 완료를 기다립니다.
+2. `Assets/Scenes/SampleScene.unity`를 열고 Play를 실행합니다.
+3. `DataManager` 오브젝트의 `SqliteValidation`이 자동 실행됩니다. Console의 `[SQLite 검증 성공]`과 Inspector의 `Last Result`에서 결과를 확인합니다.
+4. Play 중 같은 컴포넌트의 컨텍스트 메뉴 `Run SQLite Validation`으로 다시 실행할 수 있습니다. Play 밖에서는 실행하지 않습니다.
+
+샘플은 다음 두 책임으로 나뉩니다.
+
+- [DataManager.cs](Assets/Scripts/Data/DataManager.cs): `Initialize()`에서 `StreamingAssets/Database/LocalData.db`를 `persistentDataPath/VoltageSample/Database/LocalData.db`로 최초 한 번 복사하고 `DatabasePath`를 제공합니다. 중복 초기화는 예외이며, `Shutdown()` 및 `OnDestroy()`에서 경로 상태를 정리합니다. SQLite 연결·테스트 로직을 포함하지 않는 프로젝트 측 사용 예제입니다.
+- [SqliteValidation.cs](Assets/Scripts/Validation/SqliteValidation.cs): 연결된 DataManager를 초기화한 다음 Windows provider 설정, 실제 DB 조회와 결과 검증을 수행합니다. `SqlManager`와 분리된 검증 전용 컴포넌트입니다.
+
+검증은 준비된 로컬 DB를 실행별 임시 폴더에 복사한 뒤 `ReadOnly;Pooling=False`로 수행합니다. 정상·오류 이후의 파일 교체도 임시 복사본에만 적용하며, 실행이 끝나면 해당 임시 파일을 정리합니다. 배포 원본과 persistent DB는 교체하거나 삭제하지 않습니다.
+
+샘플 DB를 갱신할 때는 `Assets/Database/LocalData.db`와 `Assets/StreamingAssets/Database/LocalData.db`, 생성 C# 및 검증 기대값을 함께 맞춰야 합니다. 기존 persistent DB는 자동 덮어쓰기하지 않으므로 프로젝트의 갱신 정책으로 별도 반영해야 합니다. 다운로드·패치 정책은 아직 구현하지 않았습니다.
+
+### 확인한 결과 (2026-09-13)
+
+- Unity 6000.5.2f1 Windows Editor에서 SQLite 3.53.4 로드 및 실제 Play 검증 통과
+- `CharTable`, `StatTable` 각 3행의 SQL 키와 Protobuf 전체 필드가 Excel 샘플 값과 일치
+- 기본 키 조회, 결과 없음, `type` 복수 조회, 한글 문자열과 BLOB 파라미터 바인딩 통과
+- 정상 조회 및 SQL 오류 이후 연결 해제, 임시 DB 독점 열기·교체·재연결 통과
+- 반복 검증, DataManager 중복 초기화 거부 및 종료 후 재초기화 통과
+- 원본·배포 DB 보존 및 persistent DB 미덮어쓰기 확인
+
+Windows Player의 DLL 포함·실행 여부와 Mono·IL2CPP 차이는 아직 미검증입니다. 이 결과를 Player 지원 완료로 해석하지 않습니다.
+
+## 채택 방향과 지원 범위
+
+- SQLite 접근 API는 `Microsoft.Data.Sqlite`를 직접 사용합니다.
+- 출처가 명확한 라이브러리와 기존 `DataExporter`의 API 사용 경험을 활용하며, 별도의 제3자 Unity SQLite 래퍼는 도입하지 않습니다.
+- `Microsoft.Data.Sqlite`에 필요한 `SQLitePCLRaw`와 플랫폼별 SQLite 네이티브 라이브러리는 함께 구성합니다.
+- 1차 검증 대상은 Windows 에디터와 Windows x64 Standalone Player입니다.
+- Android와 iOS는 TODO로 남기며, 현재 지원 또는 동작 검증 완료로 간주하지 않습니다.
+- `SqlManager`의 빈 클래스나 동작하지 않는 임시 API는 추가하지 않습니다.
 
 ## 목표 사용 흐름
 
@@ -39,10 +77,10 @@ CharTable character = characters.GetByPk(1001);
 IReadOnlyList<CharTable> types = characters.GetByOp(2);
 ```
 
-커스텀 쿼리도 같은 초기화 상태를 사용합니다.
+커스텀 쿼리도 같은 초기화 상태를 사용합니다. 아래 SQL은 기본 키 컬럼이 `id`, 조회 컬럼이 `type`인 예시이며, 실제 SQL에는 각 테이블의 컬럼명을 사용합니다.
 
 ```csharp
-IReadOnlyList<CharacterSummary> result = SqlManager.Query("SELECT pk, payload FROM CharTable WHERE op = @op", reader => CharacterSummary.From(reader), SqlArgument.Create("@op", 2));
+IReadOnlyList<CharacterSummary> result = SqlManager.Query("SELECT id, payload FROM CharTable WHERE type = @type", reader => CharacterSummary.From(reader), SqlArgument.Create("@type", 2));
 ```
 
 ## 책임 경계
@@ -58,9 +96,9 @@ IReadOnlyList<CharacterSummary> result = SqlManager.Query("SELECT pk, payload FR
 ### 패키지 책임
 
 - 프로젝트가 전달한 경로를 검증하고 SQL 조회 상태를 초기화합니다.
-- 선택한 SQLite provider를 사용해 연결, command와 reader의 수명을 관리합니다.
+- `Microsoft.Data.Sqlite`를 사용해 연결, command와 reader의 수명을 관리합니다.
 - 테이블명과 parser가 결합된 `SqlTable<T>` 조회 facade를 제공합니다.
-- 기존 런타임 DB의 `pk`, 선택적 `op`, `payload BLOB` 계약을 지원합니다.
+- 기존 런타임 DB의 기본 키(`pk` 지정 필드), 선택적 조회 필드(`op` 지정 필드), `payload BLOB` 계약을 지원합니다.
 - parameter binding 기반 커스텀 쿼리와 결과 mapper를 제공합니다.
 - 프로젝트별 DB 파일, 생성 클래스 또는 배포 경로를 패키지에 포함하지 않습니다.
 
@@ -68,7 +106,7 @@ IReadOnlyList<CharacterSummary> result = SqlManager.Query("SELECT pk, payload FR
 
 ### 초기화와 종료
 
-예정 진입점:
+다음은 계약을 설명하는 표기이며 실행 가능한 C# 코드는 아닙니다.
 
 ```csharp
 SqlManager.Initialize(string databasePath);
@@ -94,7 +132,7 @@ SqlTable<T> SqlManager.GetTable<T>(string tableName, Func<byte[], T> payloadPars
 - table facade는 `GetByPk`와 `GetByOp`를 우선 제공합니다.
 - `payloadParser`는 패키지가 프로젝트별 생성 타입을 직접 알지 않도록 분리합니다.
 - 테이블명은 허용된 SQL 식별자 형식으로 검증합니다.
-- 결과 없음과 단일 조회의 중복 결과를 구분해 처리합니다.
+- 결과가 없는 경우의 반환 또는 예외 규칙은 구현 전에 확정합니다.
 
 ### 커스텀 쿼리
 
@@ -117,23 +155,26 @@ T SqlManager.ExecuteScalar<T>(string sql, params SqlArgument[] arguments);
 - command와 reader는 성공 및 예외 경로 모두에서 즉시 해제합니다.
 - Unity Editor에서 조회한 뒤에도 `DataExporter`가 DB 파일을 교체할 수 있어야 합니다.
 - 연결 풀이나 장기 연결은 실제 성능 측정 전에는 도입하지 않습니다.
+- `Microsoft.Data.Sqlite`의 연결 문자열에는 `Pooling=False`를 명시하는 방향으로 검증합니다.
 
 ## 현재 구현 상태
 
 | 항목 | 상태 | 내용 |
 | --- | --- | --- |
-| Excel 규약 검증 | 완료 | `#Range`, `#Type`, `pk`, `op`, 타입 및 데이터 값을 검증합니다. |
-| Protobuf/C# 생성 | 완료 | `SchemaGenerator`가 `.proto`와 `Data.Local` C# 클래스를 생성합니다. |
-| SQLite 생성 | 완료 | `DataExporter`가 런타임 DB와 디버그 DB를 생성하고 내용을 검증합니다. |
-| Unity 프로젝트 | 구성됨 | Unity 프로젝트와 프로젝트 전용 `.gitignore`가 준비되어 있습니다. |
-| UPM 패키지 구성 | 변경됨 | 표시 이름은 `SQL Manager`, assembly/root namespace는 `Noname.Voltage.Sql`입니다. |
-| Protobuf 런타임 | 완료 | OpenUPM의 `org.nuget.google.protobuf` `3.35.1`을 패키지 종속성으로 사용합니다. |
-| DB 경로 설정 에셋 | 제거됨 | 경로 준비 책임을 프로젝트로 옮겨 `LocalDataSettings`를 제거했습니다. |
-| SQLite 런타임 | 미구현 | 관리 코드, provider와 플랫폼별 네이티브 라이브러리를 선택하지 않았습니다. |
+| Unity 검증용 데이터 | 배치됨 | `Assets/Database/LocalData.db`, `Assets/CSharp` 생성 클래스 및 `Assets/StreamingAssets/Database/LocalData.db` 배포 복사본이 있습니다. |
+| 프로젝트 DataManager | 예제 구현됨 | 최초 DB 복사, 최종 경로 제공 및 초기화·종료 상태를 담당합니다. |
+| UPM 패키지 구성 | 구성됨 | 패키지 ID는 `com.noname.voltage`, 버전은 `0.0.1`, 표시 이름은 `SQL Manager`입니다. |
+| 런타임 어셈블리 | 구성됨 | assembly/root namespace는 `Noname.Voltage.Sql`입니다. |
+| Protobuf 런타임 | 에디터 연동 확인 | OpenUPM의 `org.nuget.google.protobuf` `3.35.1`로 실제 payload를 역직렬화했습니다. |
+| SQLite 접근 API | 도입됨 | `Microsoft.Data.Sqlite.Core` 10.0.10의 .NET Standard 2.0 DLL을 직접 사용합니다. |
+| SQLite DLL 구성 | Windows용 구성됨 | SQLitePCLRaw 2.1.11, 네이티브 SQLite 3.53.4 및 Windows 전용 플러그인 설정을 포함합니다. |
+| 에디터 검증 | 통과 | SampleScene Play에서 조회·역직렬화·파라미터 바인딩·파일 잠금 해제를 확인했습니다. |
+| Windows Player 검증 | 미수행 | 실제 x64 빌드, 네이티브 DLL 포함 여부 및 실행 검증이 남았습니다. |
 | `SqlManager` | 미구현 | 초기화, 종료와 상태 검증 본문이 없습니다. |
 | 테이블 조회 | 미구현 | `GetTable<T>()`, `GetByPk`, `GetByOp`가 없습니다. |
 | 커스텀 쿼리 | 미구현 | `Query<T>`, `Execute`, `ExecuteScalar<T>`가 없습니다. |
-| 자동 테스트 | 미구현 | 패키지 단위 테스트와 실제 DB 통합 테스트가 없습니다. |
+| 검증 코드 | 프로젝트에 구현됨 | `SqliteValidation`이 Play 시작 시 실행됩니다. Unity Test Runner용 테스트는 아직 없습니다. |
+| Android·iOS | TODO | 플랫폼별 네이티브 구성과 IL2CPP 실행 검증을 보류합니다. |
 
 ## 현재 패키지 구성
 
@@ -141,55 +182,81 @@ T SqlManager.ExecuteScalar<T>(string sql, params SqlArgument[] arguments);
 Packages/com.noname.voltage
   ├─ package.json
   ├─ README.md
+  ├─ Third Party Notices.md
+  ├─ Third Party Licenses/
   └─ Runtime
-       └─ Noname.Voltage.Sql.asmdef
+       ├─ Noname.Voltage.Sql.asmdef
+       └─ Plugins
+            ├─ Managed/ (Microsoft.Data.Sqlite 및 SQLitePCLRaw DLL)
+            └─ Windows/x86_64/e_sqlite3.dll
 ```
 
-- 패키지 ID `com.noname.voltage`와 버전 `0.0.1`은 유지합니다.
-- 표시 이름만 `LocalDataManager`에서 `SQL Manager`로 변경했습니다.
-- `SqlManager`의 빈 클래스나 동작하지 않는 임시 API는 추가하지 않습니다.
-- `Google.Protobuf`는 생성 코드와 향후 payload 파싱 흐름을 지원하기 위해 패키지 종속성으로 유지합니다.
+위 구조는 현재 파일 구성입니다. 프로젝트 DB, 생성 C#과 DataManager·검증 스크립트는 패키지 밖 `Assets`에 유지합니다.
 
-## 구현 전에 결정할 사항
+## SQLite 의존성 구성
 
-### 1. SQLite 구현
+`Microsoft.Data.Sqlite.dll` 하나만 복사하지 않고 다음 구성을 함께 포함했습니다.
 
-SQLite C# 래퍼만 추가해서는 Editor와 Player에서 완전하게 동작하지 않습니다. 다음을 하나의 의존성 세트로 선택해야 합니다.
+| 구성 | 확인할 내용 |
+| --- | --- |
+| 관리 API | `Microsoft.Data.Sqlite`의 Unity 호환 어셈블리와 의존성 |
+| 네이티브 호출 계층 | `SQLitePCLRaw.core`, provider와 필요한 초기화 구성 |
+| SQLite 엔진 | Windows x64용 네이티브 DLL과 provider가 참조하는 라이브러리 이름 |
+| Unity 설정 | 관리 DLL 참조, 네이티브 플러그인의 OS·CPU 및 에디터·Player 적용 대상 |
 
-- C# 쿼리 API
-- SQLite provider 초기화
-- 지원 플랫폼별 네이티브 SQLite 라이브러리
-- Unity 플러그인 import 설정
+현재 [DataExporter](../Project/DataExporter/DataExporter.csproj)는 `Microsoft.Data.Sqlite` `10.0.10`과 `SQLitePCLRaw.bundle_e_sqlite3` `3.0.5`를 사용합니다. Voltage는 `Microsoft.Data.Sqlite.Core` `10.0.10`, `SQLitePCLRaw.core` 및 `provider.e_sqlite3` `2.1.11`, Windows x64 네이티브 `SQLite` `3.53.4`를 사용합니다. 관리 DLL은 .NET Standard 2.0 대상으로 선택했으며 Exporter의 `net10.0` 출력물을 사용하지 않습니다.
 
-초기 지원 범위는 Unity Editor on Windows와 Windows Standalone Player를 권장합니다. Android와 iOS는 기본 조회 흐름을 검증한 뒤 확장합니다.
+기존 Protobuf UPM 의존성의 `System.Memory` 4.5.3을 유지하기 위해 SQLitePCLRaw는 요구 최소 버전인 2.1.11을 선택했습니다. `Batteries_V2` 대신 첫 연결 전에 다음 provider를 명시적으로 설정합니다.
 
-### 2. 공개 쿼리 타입
+```csharp
+SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
+```
 
-`Query<T>()`의 mapper가 사용할 최소 reader 계약과 SQL parameter 표현을 확정해야 합니다. provider 고유 타입을 공개하면 구현 교체가 어려워지므로 `IDataRecord`와 패키지 소유 `SqlArgument` 같은 작은 계약을 우선 검토합니다.
+DLL의 버전, 출처, 라이선스, SHA-256 및 적용 대상은 [Third Party Notices](<Packages/com.noname.voltage/Third Party Notices.md>)에 기록했습니다. 참고: [Microsoft.Data.Sqlite 네이티브 구성 문서](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/custom-versions).
 
-### 3. 정적 진입점과 내부 컨텍스트
+## API 구현 전에 확정할 사항
 
-사용 측에서는 `SqlManager.Initialize`와 `SqlManager.GetTable()` 형태를 제공하되, 실제 상태와 동작은 내부 컨텍스트 인스턴스에 위임하는 구조를 검토합니다. 이를 통해 사용 편의성을 유지하면서 테스트 간 상태 초기화와 수명 검증을 가능하게 합니다.
+- **쿼리 타입:** `IDataRecord`와 패키지 소유 `SqlArgument`를 기준으로 mapper와 파라미터 계약을 확정합니다.
+- **테이블 조회:** 실제 기본 키·조회 컬럼명과 타입을 연결하는 방식, `GetByPk`의 결과 없음 처리, `op`가 없는 테이블의 동작을 확정합니다. `pk`와 `op`는 Excel 필드의 역할을 나타내며 실제 컬럼명이 항상 해당 문자열인 것은 아닙니다.
+- **읽기·쓰기 정책:** 최소 검증은 읽기 전용으로 수행합니다. 이후 `Execute`를 구현할 때 연결 모드와 허용 범위를 결정합니다.
+- **상태 관리:** 정적 `SqlManager` 진입점의 초기화·종료와 테스트 간 상태 정리 방식을 확정합니다. 내부 컨텍스트 분리 여부는 구현에 필요한 범위에서 결정합니다.
+- **Windows 빌드:** 검증할 스크립팅 백엔드(Mono/IL2CPP)를 정하고 결과에 명시합니다. 한 백엔드의 성공을 다른 백엔드의 검증 완료로 간주하지 않습니다.
 
 ## 단계별 구현 계획
 
-### 1단계. SQLite 런타임 선택 및 연결 검증
+### 1단계. Windows용 DLL 구성
 
-- Windows Editor와 Windows Player에서 사용할 provider 및 네이티브 라이브러리를 선택합니다.
-- 읽기 전용 연결을 열고 닫는 최소 검증을 수행합니다.
-- 쿼리 종료 후 파일 잠금이 남지 않는지 확인합니다.
+상태: 완료. SampleScene의 Windows Editor Play에서 네이티브 DLL 로드까지 확인했습니다.
 
-완료 조건: 실제 `LocalData.db` 연결을 열고 닫은 뒤 `DataExporter`가 같은 파일을 교체할 수 있습니다.
+- `Microsoft.Data.Sqlite` 관리 DLL과 필요한 `SQLitePCLRaw` 의존성 및 Windows x64 네이티브 DLL을 구성합니다.
+- Unity 플러그인 적용 대상을 Windows 에디터와 Windows Player에 맞춥니다.
+- 라이브러리 출처, 버전, 라이선스와 provider 초기화 방법을 기록합니다.
 
-### 2단계. `SqlManager` 수명 구현
+완료 조건: 관리 DLL의 참조 오류가 없고 Windows 에디터에서 네이티브 SQLite를 로드할 수 있습니다.
+
+### 2단계. 에디터와 Windows Player 최소 검증
+
+상태: 프로젝트 측 DataManager·검증 컴포넌트와 에디터 검증 완료. Windows Player 빌드·실행은 다음 작업입니다.
+
+- `SqlManager`를 구현하기 전에 프로젝트 측 최소 검증 코드로 동작을 확인합니다.
+- 기존 런타임 `LocalData.db`의 검증용 복사본을 준비하고 읽기 전용, `Pooling=False`로 연결합니다.
+- 실제 기본 키 또는 조회 컬럼에 파라미터를 바인딩해 행을 조회합니다.
+- `payload`를 `byte[]`로 읽고 `CharTable.Parser.ParseFrom()` 등 생성된 parser로 역직렬화합니다.
+- 결과를 생성 원본과 비교하고, 연결 종료 후 복사본 교체가 가능한지 확인합니다.
+- Windows Player에서도 프로젝트가 DB 경로를 준비하도록 하고 같은 검증을 수행합니다.
+- Player 산출물의 네이티브 DLL 포함 여부와 실제 로드를 확인하고 사용한 스크립팅 백엔드를 기록합니다.
+
+완료 조건: 에디터와 Windows x64 Player에서 동일한 조회·역직렬화가 성공하고, 연결 종료 후 DB 파일 잠금이 남지 않습니다. 원본 DB는 검증 과정에서 변경하지 않습니다.
+
+### 3단계. `SqlManager` 수명 구현
 
 - `Initialize(string databasePath)`와 `Shutdown()`을 구현합니다.
 - 초기화 전, 중복 초기화와 종료 후 호출에 대한 오류 계약을 구현합니다.
-- 정적 진입점과 내부 컨텍스트의 책임을 분리합니다.
+- 확정한 상태 관리 방식으로 자원 정리와 테스트 간 상태 초기화를 구현합니다.
 
 완료 조건: 정상 초기화와 각 잘못된 상태 전이가 테스트로 구분됩니다.
 
-### 3단계. 테이블 조회 구현
+### 4단계. 테이블 조회 구현
 
 - `GetTable<T>()`와 `SqlTable<T>`를 구현합니다.
 - `pk` 단일 조회와 선택적 `op` 복수 조회를 parameter binding으로 구현합니다.
@@ -197,7 +264,7 @@ SQLite C# 래퍼만 추가해서는 Editor와 Player에서 완전하게 동작�
 
 완료 조건: `CharTable`과 `StatTable`의 실제 payload를 생성 원본과 같은 메시지로 역직렬화합니다.
 
-### 4단계. 커스텀 쿼리 구현
+### 5단계. 커스텀 쿼리 구현
 
 - `Query<T>`, `Execute`와 `ExecuteScalar<T>`를 구현합니다.
 - mapper와 parameter의 오류 처리 및 자원 해제를 검증합니다.
@@ -205,7 +272,7 @@ SQLite C# 래퍼만 추가해서는 Editor와 Player에서 완전하게 동작�
 
 완료 조건: parameter를 사용하는 조회와 명령 실행이 성공하며 예외 이후에도 연결이 해제됩니다.
 
-### 5단계. 생성 산출물 반영 자동화
+### 6단계. 생성 산출물 반영 자동화
 
 프로젝트 측 작업으로 다음 복사를 자동화합니다.
 
@@ -221,7 +288,9 @@ Output/Database/LocalData.db
 - 디버그 DB는 Player 런타임 산출물에 포함하지 않습니다.
 - 이 과정은 프로젝트 데이터에 속하므로 패키지 내부 경로로 고정하지 않습니다.
 
-### 6단계. 테스트와 Player 검증
+### 7단계. 패키지 통합 검증
+
+최소 검증에 사용한 데이터로 구현된 공개 API를 검증합니다. 쓰기 쿼리와 파일 교체 검증은 검증용 DB 복사본을 대상으로 합니다.
 
 필수 검증:
 
@@ -235,9 +304,10 @@ Output/Database/LocalData.db
 - 조회 이후 DB 파일 교체 가능 여부
 - Windows Standalone Player에서 동일 흐름 실행
 
-## 전체 완료 기준
+## 1차 지원 범위의 완료 기준
 
-- [ ] Unity Editor와 첫 번째 지원 Player에서 컴파일 오류가 없습니다.
+- [ ] Windows 에디터와 Windows x64 Player에서 관리·네이티브 DLL이 정상 로드됩니다.
+- [ ] 검증에 사용한 DLL 버전, 초기화 방식과 Windows 스크립팅 백엔드가 기록되어 있습니다.
 - [ ] 프로젝트가 준비한 DB 경로로 `SqlManager.Initialize`를 실행할 수 있습니다.
 - [ ] `GetTable<T>()`로 pk와 op 조회를 수행할 수 있습니다.
 - [ ] parameter binding 기반 커스텀 쿼리를 실행할 수 있습니다.
@@ -246,7 +316,16 @@ Output/Database/LocalData.db
 - [ ] 프로젝트별 DB와 생성 C#은 패키지 외부에 유지됩니다.
 - [ ] README의 절차만으로 새 환경에서 설치와 실행을 재현할 수 있습니다.
 
-## 현재 보류 범위
+## TODO: Android·iOS
+
+Windows 최소 검증 이후 별도로 진행합니다. 아래 항목은 1차 완료 조건에 포함하지 않습니다.
+
+- [ ] Android 대상 CPU별 네이티브 라이브러리, 16KB 페이지 크기 대응과 플러그인 설정 확인
+- [ ] iOS 네이티브 라이브러리의 링크 방식과 provider 초기화 확인
+- [ ] 각 플랫폼의 IL2CPP 빌드 및 실기기에서 조회·역직렬화·자원 해제 검증
+- [ ] 프로젝트 측 DB 배포·로컬 경로 준비 방식 검증
+
+## 보류 범위
 
 다음 항목은 기본 조회 흐름과 실제 필요가 확인될 때까지 구현하지 않습니다.
 
@@ -257,14 +336,3 @@ Output/Database/LocalData.db
 - 자동 transaction 및 schema migration
 - DB 다운로드, 패치와 핫 업데이트
 - enum, FK/ref, `bytes`와 중첩 메시지 등 Excel 규약 확장
-- Android와 iOS 등 추가 플랫폼 지원
-
-## 권장 구현 순서
-
-1. SQLite provider와 Windows 네이티브 라이브러리 선택
-2. 실제 DB 연결 및 파일 잠금 검증
-3. `SqlManager` 초기화와 종료 구현
-4. `GetTable<T>()`, pk/op 조회와 payload parser 구현
-5. 커스텀 쿼리 API 구현
-6. 생성 산출물 반영 자동화
-7. Editor 테스트와 Windows Player 통합 검증
