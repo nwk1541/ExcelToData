@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "com.noname.voltage",
   "version": "0.0.1",
   "displayName": "SQL Manager",
@@ -8,6 +8,7 @@
     "org.nuget.google.protobuf": "3.35.1"
   },
   "author": {
-    "name": "wknam"
+    "name": "Noname",
+    "email": "nwk1541@naver.com"
   }
 }
